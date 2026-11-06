@@ -1,8 +1,8 @@
 #include "core/color.h"
 
+#include <algorithm>
 #include <loguru/loguru.hpp>
 #include <sstream>
-#include <stdexcept>
 #include <vector>
 
 Color::Color() {
@@ -22,23 +22,11 @@ Color& Color::operator=(const Color& rhs) {
 }
 
 Color::Color(const double& r_, const double& g_, const double& b_,
-             const double& a_) {
-  if (r_ < static_cast<double>(0.0) || r_ > static_cast<double>(1.0) ||
-      g_ < static_cast<double>(0.0) || g_ > static_cast<double>(1.0) ||
-      b_ < static_cast<double>(0.0) || b_ > static_cast<double>(1.0) ||
-      a_ < static_cast<double>(0.0) || a_ > static_cast<double>(1.0)) {
-    LOG_F(ERROR,
-          "RGBA values must be in the range [0.0, 1.0]. Received: r=%f, g=%f, "
-          "b=%f, a=%f",
-          static_cast<double>(r_), static_cast<double>(g_),
-          static_cast<double>(b_), static_cast<double>(a_));
-    throw std::invalid_argument("RGBA values out of range [0.0, 1.0]");
-  }
-  r = r_;
-  g = g_;
-  b = b_;
-  a = a_;
-}
+             const double& a_)
+    : r(std::clamp(r_, 0.0, 1.0)),
+      g(std::clamp(g_, 0.0, 1.0)),
+      b(std::clamp(b_, 0.0, 1.0)),
+      a(std::clamp(a_, 0.0, 1.0)) {}
 
 void Color::clear() {
   r = g = b = static_cast<double>(0.0);

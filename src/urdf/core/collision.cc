@@ -16,13 +16,11 @@ void Collision::clear() {
 
 std::string Collision::toString() const {
   std::ostringstream os;
-  os << "Collision = ["
-     << "Geometry = ";
+  os << "Collision = [" << "Geometry = ";
   if (geometry) {
     os << geometry->toString();
   }
-  os << ", "
-     << "Origin = ";
+  os << ", " << "Origin = ";
   if (origin) {
     os << origin->toString();
   }
@@ -52,3 +50,5 @@ void Collision::getOrigin(double* xyz) const {
     xyz[i] = vec[i];
   }
 }
+
+std::shared_ptr<Pose> Collision::getPose() const { return origin; }

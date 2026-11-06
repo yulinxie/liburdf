@@ -1,5 +1,6 @@
 #include "internal/model_parser.h"
 
+#include <cstring>
 #include <loguru/loguru.hpp>
 
 ModelParser::ModelParser() { p_ = std::make_shared<Model>(); }
@@ -9,26 +10,66 @@ int ModelParser::parse(const tinyxml2::XMLElement* xml) {
     LOG_F(ERROR, "ModelParser::parse() received null pointer");
     return -1;
   }
+
+  const tinyxml2::XMLElement* model_name_xml =
+      std::strcmp(xml->Name(), "robot") == 0 ? xml
+                                             : xml->FirstChildElement("robot");
+  if (model_name_xml == nullptr) {
+    LOG_F(ERROR, "ModelParser::parse() failed to find 'robot' element");
+    return -1;
+  }
+  const char* model_name = model_name_xml->Attribute("name");
+  if (model_name == nullptr) {
+    LOG_F(ERROR,
+          "ModelParser::parse() failed to find 'name' attribute in 'robot' "
+          "element");
+    return -1;
+  }
+  p_->setName(model_name);
+
+  int result = parseLinks(xml);
+  if (result != 0) {
+    return result;
+  }
+
+  result = parseJoints(xml);
+  if (result != 0) {
+    return result;
+  }
+
+  LOG_F(INFO, "Model parsed successfully");
+  return 0;
+}
+
+int ModelParser::parseLinks(const tinyxml2::XMLElement* xml) {
   LOG_F(INFO, "Parsing Model links ...");
   const tinyxml2::XMLElement* link_xml = xml->FirstChildElement("link");
-  while (link_xml) {
+  while (link_xml != nullptr) {
     LinkParser parser;
-    parser.parse(link_xml);
-    auto link = parser.get();
-    p_->setLink(link);
+    const int result = parser.parse(link_xml);
+    if (result != 0) {
+      return result;
+    }
+    p_->setLink(parser.get());
     link_xml = link_xml->NextSiblingElement("link");
   }
+
+  return 0;
+}
+
+int ModelParser::parseJoints(const tinyxml2::XMLElement* xml) {
   LOG_F(INFO, "Parsing Model joints ...");
   const tinyxml2::XMLElement* joint_xml = xml->FirstChildElement("joint");
-  int i = 0;
-  while (joint_xml) {
+  while (joint_xml != nullptr) {
     JointParser parser;
-    parser.parse(joint_xml);
-    const auto joint = parser.get();
-    p_->setJoint(joint);
+    const int result = parser.parse(joint_xml);
+    if (result != 0) {
+      return result;
+    }
+    p_->setJoint(parser.get());
     joint_xml = joint_xml->NextSiblingElement("joint");
   }
-  LOG_F(INFO, "Model parsed successfully");
+
   return 0;
 }
 
@@ -42,10 +83,18 @@ std::string ModelParser::toString() const {
   return os.str();
 }
 
-bool ModelParser::isA(const char* name) const { return p_->isA(name); }
+bool ModelParser::isA(const char* name) const {
+  return p_ ? p_->isA(name) : false;
+}
 
-bool ModelParser::empty() const { return p_->empty(); }
+bool ModelParser::empty() const { return p_ ? p_->empty() : true; }
 
-void ModelParser::clear() { p_->clear(); }
+void ModelParser::clear() {
+  if (p_) {
+    p_->clear();
+  }
+}
 
-const char* ModelParser::getTypename() const { return p_->getTypename(); };
+const char* ModelParser::getTypename() const {
+  return p_ ? p_->getTypename() : "unknown";
+};

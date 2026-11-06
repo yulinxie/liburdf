@@ -1,5 +1,8 @@
 #include "internal/material_parser.h"
 
+#include <cerrno>
+#include <cmath>
+#include <cstdlib>
 #include <loguru/loguru.hpp>
 #include <sstream>
 
@@ -15,11 +18,17 @@ std::string MaterialParser::toString() const {
 
 bool MaterialParser::empty() const { return false; }
 
-void MaterialParser::clear() { p_->clear(); }
+void MaterialParser::clear() {
+  if (p_) {
+    p_->clear();
+  }
+}
 
 const char* MaterialParser::getTypename() const { return "material"; }
 
-bool MaterialParser::isA(const char* name) const { return p_->isA(name); }
+bool MaterialParser::isA(const char* name) const {
+  return p_ ? p_->isA(name) : false;
+}
 
 int MaterialParser::parse(const tinyxml2::XMLElement* xml) {
   if (xml == nullptr) {
@@ -32,27 +41,44 @@ int MaterialParser::parse(const tinyxml2::XMLElement* xml) {
   }
 
   const tinyxml2::XMLElement* density_xml = xml->FirstChildElement("density");
-  PropertyParser<double> dp;
-  dp.parse(density_xml);
-  const auto d = dp.get();
-  p_->setDensity((*d)["value"]);
+  if (density_xml != nullptr) {
+    const char* density_value = density_xml->Attribute("value");
+    if (density_value != nullptr) {
+      char* end = nullptr;
+      errno = 0;
+      const double density = std::strtod(density_value, &end);
+      if (end != density_value && *end == '\0' && errno != ERANGE &&
+          std::isfinite(density)) {
+        p_->setDensity(density);
+      } else {
+        LOG_F(WARNING, "Ignoring  material density: %s", density_value);
+      }
+    }
+  }
 
   const tinyxml2::XMLElement* color_xml = xml->FirstChildElement("color");
-  ColorParser cp;
-  cp.parse(color_xml);
-  const auto cd = cp.get();
-  double r, g, b, a;
-  r = cd->getR();
-  g = cd->getG();
-  b = cd->getB();
-  a = cd->getA();
-  p_->setColor(r, g, b, a);
+
+  if (color_xml != nullptr) {
+    ColorParser cp;
+    int cps = cp.parse(color_xml);
+    if (cps) return cps;
+    const auto cd = cp.get();
+    double r, g, b, a;
+    r = cd->getR();
+    g = cd->getG();
+    b = cd->getB();
+    a = cd->getA();
+    p_->setColor(r, g, b, a);
+  }
 
   const tinyxml2::XMLElement* txt_xml = xml->FirstChildElement("texture");
-  PropertyParser<std::string> sp;
-  sp.parse(txt_xml);
-  const auto dsp = sp.get();
-  p_->setFilename((*dsp)["filename"]);
+  if (txt_xml != nullptr) {
+    PropertyParser<std::string> sp;
+    int sps = sp.parse(txt_xml);
+    if (sps) return sps;
+    const auto dsp = sp.get();
+    p_->setFilename((*dsp)["filename"]);
+  }
   return 0;
 }
 

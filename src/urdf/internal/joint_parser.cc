@@ -11,6 +11,7 @@ int JointParser::parse(const tinyxml2::XMLElement* xml) {
     LOG_F(ERROR, "JointParser::parse() received null pointer");
     return -1;
   }
+  p_ = std::make_shared<Joint>();
   const char* name_ = ParserBase<Joint>::getNameOf(xml);
   p_->setName(std::string(name_));
   const tinyxml2::XMLElement* axis_xml = xml->FirstChildElement("axis");
@@ -52,7 +53,8 @@ int JointParser::parse(const tinyxml2::XMLElement* xml) {
   const tinyxml2::XMLElement* origin_xml = xml->FirstChildElement("origin");
   while (origin_xml) {
     PoseParser op;
-    op.parse(origin_xml);
+    int pos = op.parse(origin_xml);
+    if (pos) return pos;
     const auto o = op.get();
     p_->pushBackTransform(o);
 
@@ -75,7 +77,8 @@ int JointParser::parse(const tinyxml2::XMLElement* xml) {
       xml->FirstChildElement("calibration");
   if (calibration_xml) {
     PropertyParser<double> calibration_parser;
-    calibration_parser.parse(calibration_xml);
+    int cs = calibration_parser.parse(calibration_xml);
+    if (cs) return cs;
     const auto data = calibration_parser.get();
     std::shared_ptr<JointCalibration> jc = std::make_shared<JointCalibration>();
     jc->setFalling((*data)["falling"]);
@@ -87,18 +90,22 @@ int JointParser::parse(const tinyxml2::XMLElement* xml) {
   const tinyxml2::XMLElement* limit_xml = xml->FirstChildElement("limit");
   if (limit_xml) {
     PropertyParser<double> limit_parser;
-    limit_parser.parse(limit_xml);
+    int lps = limit_parser.parse(limit_xml);
+    if (lps) return lps;
     const auto data = limit_parser.get();
     std::shared_ptr<JointLimits> jl = std::make_shared<JointLimits>();
     jl->setEffort((*data)["effort"]);
     jl->setVelocity((*data)["velocity"]);
+    jl->setUpper((*data)["upper"]);
+    jl->setLower((*data)["lower"]);
     p_->setLimits(jl);
   }
 
   const tinyxml2::XMLElement* dynamics_xml = xml->FirstChildElement("dynamics");
   if (dynamics_xml) {
     PropertyParser<double> dynamics_parser;
-    dynamics_parser.parse(dynamics_xml);
+    int dps = dynamics_parser.parse(dynamics_xml);
+    if (dps) return dps;
     const auto data = dynamics_parser.get();
     std::shared_ptr<JointDynamics> jd = std::make_shared<JointDynamics>();
     jd->setDamping((*data)["damping"]);
@@ -109,14 +116,16 @@ int JointParser::parse(const tinyxml2::XMLElement* xml) {
   const tinyxml2::XMLElement* mimic_xml = xml->FirstChildElement("mimic");
   if (mimic_xml) {
     PropertyParser<double> mimic_parser;
-    mimic_parser.parse(mimic_xml);
+    int mps = mimic_parser.parse(mimic_xml);
+    if (mps) return mps;
     const auto data = mimic_parser.get();
     std::shared_ptr<JointMimic> jm = std::make_shared<JointMimic>();
     jm->setMultiplier((*data)["multiplier"]);
     jm->setOffset((*data)["offset"]);
 
     PropertyParser<std::string> str_mimic_parser;
-    str_mimic_parser.parse(mimic_xml);
+    int smp = str_mimic_parser.parse(mimic_xml);
+    if (smp) return smp;
     const auto data_str = str_mimic_parser.get();
     jm->setName((*data_str)["joint"]);
     p_->setMimic(jm);
@@ -126,7 +135,8 @@ int JointParser::parse(const tinyxml2::XMLElement* xml) {
       xml->FirstChildElement("safety_controller");
   if (safety_xml) {
     PropertyParser<double> safety_parser;
-    safety_parser.parse(safety_xml);
+    int sps = safety_parser.parse(safety_xml);
+    if (sps) return sps;
     const auto data = safety_parser.get();
     std::shared_ptr<JointSafety> js = std::make_shared<JointSafety>();
     js->setSoftUpperLimit((*data)["soft_upper_limit"]);
@@ -138,13 +148,19 @@ int JointParser::parse(const tinyxml2::XMLElement* xml) {
   return 0;
 }
 
-const char* JointParser::getTypename() const { return p_->getTypename(); }
+const char* JointParser::getTypename() const {
+  return p_ ? p_->getTypename() : "unknown";
+}
 
 std::shared_ptr<Joint> JointParser::get() { return p_; }
 
-void JointParser::clear() { p_->clear(); }
+void JointParser::clear() {
+  if (p_) {
+    p_->clear();
+  }
+}
 
-bool JointParser::empty() const { return p_->empty(); }
+bool JointParser::empty() const { return p_ ? p_->empty() : true; }
 
 std::string JointParser::toString() const {
   std::ostringstream os;
@@ -154,5 +170,7 @@ std::string JointParser::toString() const {
   return os.str();
 }
 
-bool JointParser::isA(const char* name) const { return p_->isA(name); }
+bool JointParser::isA(const char* name) const {
+  return p_ ? p_->isA(name) : false;
+}
 JointParser::~JointParser() {};

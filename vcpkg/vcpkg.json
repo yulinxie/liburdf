@@ -1,6 +1,6 @@
 {
   "name": "liburdf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "homepage": "https://github.com/wissem01chiha/liburdf",
   "license": "MIT",
   "description": "URDF File I/O Library",

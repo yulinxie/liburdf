@@ -22,7 +22,8 @@ int CameraParser::parse(const tinyxml2::XMLElement* xml) {
   const tinyxml2::XMLElement* origin_xml = xml->FirstChildElement("origin");
   if (origin_xml) {
     PoseParser op;
-    op.parse(origin_xml);
+    int s = op.parse(origin_xml);
+    if (s) return s;
     const auto o = op.get();
     p_->setOrigin(o);
   }
@@ -32,7 +33,8 @@ int CameraParser::parse(const tinyxml2::XMLElement* xml) {
         camera_xml->FirstChildElement("image");
     if (image_xml) {
       PropertyParser<double> pp;
-      pp.parse(image_xml);
+      int t = pp.parse(image_xml);
+      if (t) return t;
       const auto data = pp.get();
       p_->setHfov((*data)["hfov"]);
       p_->setFar((*data)["far"]);
@@ -49,7 +51,9 @@ int CameraParser::parse(const tinyxml2::XMLElement* xml) {
 
 std::shared_ptr<Camera> CameraParser::get() { return p_; }
 
-const char* CameraParser::getTypename() const { return p_->getTypename(); }
+const char* CameraParser::getTypename() const {
+  return p_ ? p_->getTypename() : "unknown";
+}
 
 bool CameraParser::isA(const char* name) const {
   return std::string(name) == getTypename();

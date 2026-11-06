@@ -1,0 +1,6 @@
+# https://docs.codecov.com/docs/ignoring-paths
+ignore:
+  - "third_party"
+  - "python"
+  - "test"
+  - "**/_test.cc"

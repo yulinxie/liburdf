@@ -3,11 +3,6 @@
 #include <loguru/loguru.hpp>
 
 Joint::Joint() {
-  dynamics = std::make_shared<JointDynamics>();
-  limits = std::make_shared<JointLimits>();
-  safety = std::make_shared<JointSafety>();
-  calibration = std::make_shared<JointCalibration>();
-  mimic = std::make_shared<JointMimic>();
   type = Type::UNKNOWN;
   axis.setZero();
 }
@@ -36,7 +31,19 @@ Joint::Joint(const Joint& rhs) {
   }
 }
 
-Joint::Joint(Joint&& rhs) noexcept {}
+Joint::Joint(Joint&& rhs) noexcept {
+  this->type = rhs.type;
+  this->axis = rhs.axis;
+  this->name = std::move(rhs.name);
+  this->child = std::move(rhs.child);
+  this->parent = std::move(rhs.parent);
+  this->transform = std::move(rhs.transform);
+  this->dynamics = std::move(rhs.dynamics);
+  this->limits = std::move(rhs.limits);
+  this->safety = std::move(rhs.safety);
+  this->calibration = std::move(rhs.calibration);
+  this->mimic = std::move(rhs.mimic);
+}
 
 void Joint::clear() {
   this->axis.setZero();
@@ -44,6 +51,11 @@ void Joint::clear() {
   this->limits.reset();
   this->safety.reset();
   this->calibration.reset();
+  this->mimic.reset();
+  this->name.clear();
+  this->child.clear();
+  this->parent.clear();
+  this->transform.clear();
   this->type = Type::UNKNOWN;
 }
 
@@ -75,6 +87,8 @@ std::string Joint::toString() const {
   if (safety) os << safety->toString();
   os << ", ";
   if (mimic) os << mimic->toString();
+  os << ", ";
+  if (limits) os << limits->toString();
   os << ", Transformations: [";
   for (size_t i = 0; i < transform.size(); ++i) {
     os << transform[i]->toString();
@@ -131,13 +145,13 @@ void Joint::setType(const char* c_) {
     this->type = Type::REVOLUTE;
   } else if (std::strcmp(c_, "fixed") == 0) {
     this->type = Type::FIXED;
-  } else if (std::strcmp(c_, "planner") == 0) {
+  } else if (std::strcmp(c_, "planar") == 0) {
     this->type = Type::PLANAR;
   } else if (std::strcmp(c_, "floating") == 0) {
     this->type = Type::FLOATING;
-  } else if (std::strcmp(c_, "continus") == 0) {
+  } else if (std::strcmp(c_, "continuous") == 0) {
     this->type = Type::CONTINUOUS;
-  } else if (std::strcmp(c_, "prismatric") == 0) {
+  } else if (std::strcmp(c_, "prismatic") == 0) {
     this->type = Type::PRISMATIC;
   } else if (std::strcmp(c_, "universal") == 0) {
     this->type = Type::UNIVERSAL;
@@ -153,6 +167,20 @@ void Joint::setAxis(double x, double y, double z) {
 }
 
 std::string Joint::getName() const { return this->name; }
+
+Joint::Type Joint::getType() const { return this->type; }
+
+std::shared_ptr<JointDynamics> Joint::getDynamics() const {
+  return this->dynamics;
+}
+
+std::shared_ptr<JointSafety> Joint::getSafety() const { return this->safety; }
+
+std::shared_ptr<JointCalibration> Joint::getCalibration() const {
+  return this->calibration;
+}
+
+std::shared_ptr<JointMimic> Joint::getMimic() const { return this->mimic; }
 
 void Joint::pushBackChild(const std::string lk) {
   if (!lk.empty()) {
@@ -181,6 +209,8 @@ bool Joint::isParent(const char* name) const {
       std::find(this->parent.begin(), this->parent.end(), std::string(name));
   return it != this->parent.end();
 }
+std::shared_ptr<JointLimits> Joint::getLimits() const { return this->limits; }
+
 std::vector<std::shared_ptr<Pose>> Joint::getTransform() const {
   return this->transform;
 }
